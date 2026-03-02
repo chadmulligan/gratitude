@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tests — Coeurs de la paroisse</title>
+<style>
+  body { font-family: monospace; padding: 2rem; background: #fafafa; }
+  .pass { color: #2e7d32; }
+  .fail { color: #c62828; font-weight: bold; }
+  .result { margin: 0.3rem 0; }
+  h2 { margin-top: 1.5rem; }
+  #summary { margin-top: 2rem; padding: 1rem; border-radius: 8px; font-size: 1.1rem; }
+  #summary.all-pass { background: #e8f5e9; color: #2e7d32; }
+  #summary.has-fail { background: #ffebee; color: #c62828; }
+</style>
+</head>
+<body>
+<h1>Tests — Coeurs de la paroisse</h1>
+
+<iframe id="app" src="index.html" style="width:1100px; height:600px; border:1px solid #ccc; display:block; margin:1rem 0;"></iframe>
+
+<div id="results"></div>
+<div id="summary"></div>
+
+<script>
+const results = document.getElementById('results');
+const summaryEl = document.getElementById('summary');
+let passed = 0;
+let failed = 0;
+
+function assert(name, condition) {
+  const el = document.createElement('div');
+  el.className = 'result';
+  if (condition) {
+    el.innerHTML = `<span class="pass">PASS</span> ${name}`;
+    passed++;
+  } else {
+    el.innerHTML = `<span class="fail">FAIL</span> ${name}`;
+    failed++;
+  }
+  results.appendChild(el);
+}
+
+function heading(title) {
+  const h = document.createElement('h2');
+  h.textContent = title;
+  results.appendChild(h);
+}
+
+function showSummary() {
+  const total = passed + failed;
+  summaryEl.textContent = `${passed}/${total} tests passed` + (failed > 0 ? ` — ${failed} failed` : '');
+  summaryEl.className = failed > 0 ? 'has-fail' : 'all-pass';
+}
+
+const iframe = document.getElementById('app');
+
+iframe.addEventListener('load', () => {
+  const doc = iframe.contentDocument;
+  const win = iframe.contentWindow;
+
+  // ── Structure ──
+  heading('Structure de la page');
+
+  const grid = doc.getElementById('grid');
+  assert('La grille #grid existe', !!grid);
+
+  const cards = doc.querySelectorAll('.heart-card');
+  assert(`40 coeurs sont affichés (trouvé: ${cards.length})`, cards.length === 40);
+
+  const btn = doc.getElementById('randomBtn');
+  assert('Le bouton "Au hasard" existe', !!btn);
+  assert('Le bouton contient le texte "Au hasard"', btn && btn.textContent.trim() === 'Au hasard');
+
+  // ── Coeurs ──
+  heading('Contenu des coeurs');
+
+  const allHaveText = Array.from(cards).every(card => {
+    const text = card.querySelector('.heart-back-text');
+    return text && text.textContent.trim().length > 0;
+  });
+  assert('Chaque coeur a un message non vide', allHaveText);
+
+  const allHaveColor = Array.from(cards).every(card => {
+    return card.style.getPropertyValue('--color').length > 0;
+  });
+  assert('Chaque coeur a une couleur CSS custom (--color)', allHaveColor);
+
+  const allHaveRotation = Array.from(cards).every(card => {
+    return card.style.transform.includes('rotate');
+  });
+  assert('Chaque coeur a une rotation aléatoire', allHaveRotation);
+
+  // ── Messages uniques ──
+  const messages = Array.from(cards).map(c => c.querySelector('.heart-back-text').textContent.trim());
+  const uniqueMessages = new Set(messages);
+  assert(`Les 40 messages sont uniques (trouvé: ${uniqueMessages.size} uniques)`, uniqueMessages.size === 40);
+
+  // ── Flip interaction ──
+  heading('Interaction flip');
+
+  const firstCard = cards[0];
+  assert('Un coeur n\'est pas retourné au départ', !firstCard.classList.contains('flipped'));
+
+  firstCard.click();
+  assert('Après clic, le coeur a la classe "flipped"', firstCard.classList.contains('flipped'));
+
+  const secondCard = cards[1];
+  secondCard.click();
+  assert('Après clic sur un 2e coeur, il est flipped immédiatement', secondCard.classList.contains('flipped'));
+
+  // La fermeture du 1er coeur est différée (300ms), testons après le délai
+  setTimeout(() => {
+    assert('Après délai, le 1er coeur s\'est refermé', !firstCard.classList.contains('flipped'));
+
+    secondCard.click();
+    assert('Re-cliquer sur le même coeur le referme', !secondCard.classList.contains('flipped'));
+
+    // ── Clic extérieur ferme ──
+    heading('Fermeture par clic extérieur');
+
+    cards[5].click();
+    assert('Coeur 6 ouvert après clic', cards[5].classList.contains('flipped'));
+
+    doc.body.click();
+    assert('Clic sur body ferme le coeur ouvert', !cards[5].classList.contains('flipped'));
+
+    // ── Bouton Au hasard ──
+  heading('Bouton "Au hasard"');
+
+  const anyFlippedBefore = Array.from(cards).some(c => c.classList.contains('flipped'));
+  assert('Aucun coeur ouvert avant clic au hasard', !anyFlippedBefore);
+
+  btn.click();
+
+  // Le bouton utilise un setTimeout de 850ms, testons après
+  setTimeout(() => {
+    const flippedAfter = Array.from(cards).filter(c => c.classList.contains('flipped'));
+    assert('Après "Au hasard", exactement 1 coeur est ouvert', flippedAfter.length === 1);
+
+    // ── Style du bouton ──
+    heading('Style du bouton');
+
+    const btnGroupEl = doc.getElementById('btnGroup');
+    const btnGroupStyle = win.getComputedStyle(btnGroupEl);
+    assert('Le groupe de boutons a position: sticky', btnGroupStyle.position === 'sticky');
+
+    // ── Bouton extensible ──
+    heading('Bouton extensible et zoom');
+
+    const expandBtnEl = doc.getElementById('expandBtn');
+    assert('La languette expand existe', !!expandBtnEl);
+
+    const zoomBtnEl = doc.getElementById('zoomBtn');
+    assert('Le bouton Zoom existe', !!zoomBtnEl);
+
+    const zoomBtnStyle = win.getComputedStyle(zoomBtnEl);
+    assert('Le bouton Zoom est caché par défaut (max-width: 0)', zoomBtnStyle.maxWidth === '0px');
+
+    expandBtnEl.click();
+    assert('Après clic expand, btn-group a la classe expanded', btnGroupEl.classList.contains('expanded'));
+
+    // Vérifier que la règle CSS expanded applique max-width > 0
+    const expandedRule = Array.from(doc.styleSheets[0].cssRules).find(
+      r => r.selectorText === '.btn-group.expanded .zoom-btn'
+    );
+    assert('La règle CSS expanded définit max-width > 0 pour le bouton zoom',
+      expandedRule && parseInt(expandedRule.style.maxWidth) > 0);
+
+    // Attendre la transition CSS pour les tests suivants
+    setTimeout(() => {
+      expandBtnEl.click();
+      assert('Après 2e clic expand, btn-group n\'a plus expanded', !btnGroupEl.classList.contains('expanded'));
+
+      // ── Mode zoom ──
+      heading('Mode zoom');
+
+      // Activer le zoom
+      expandBtnEl.click(); // ouvrir le menu
+      zoomBtnEl.click(); // activer le zoom
+      assert('Le bouton Zoom est actif après clic (classe active)', zoomBtnEl.classList.contains('active'));
+
+      // Fermer tout coeur ouvert d'abord
+      Array.from(cards).forEach(c => { c.classList.remove('flipped'); c.classList.remove('zoomed'); });
+      win.currentOpen = null;
+
+      cards[3].click();
+      assert('En mode zoom, le coeur cliqué a la classe zoomed', cards[3].classList.contains('zoomed'));
+      assert('En mode zoom, le coeur n\'a PAS la classe flipped', !cards[3].classList.contains('flipped'));
+
+      const zoomedStyle = win.getComputedStyle(cards[3]);
+      assert('Le coeur zoomé a un z-index élevé', parseInt(zoomedStyle.zIndex) >= 50);
+
+      cards[3].click();
+      assert('Re-clic referme le coeur zoomé', !cards[3].classList.contains('zoomed'));
+
+      // Désactiver le zoom
+      zoomBtnEl.click();
+      assert('Le bouton Zoom est désactivé après 2e clic', !zoomBtnEl.classList.contains('active'));
+
+      // ── Structure SVG ──
+      heading('Coeurs en SVG');
+
+      const allHaveSVG = Array.from(cards).every(card => {
+        return card.querySelectorAll('.heart-svg').length >= 2;
+      });
+      assert('Chaque coeur utilise des SVG (pas de pseudo-éléments)', allHaveSVG);
+
+      const svgPaths = doc.querySelectorAll('.heart-svg path');
+      const allPathsHaveFill = Array.from(svgPaths).every(p => p.getAttribute('fill') && p.getAttribute('fill').startsWith('#'));
+      assert('Chaque SVG path a une couleur fill', allPathsHaveFill);
+
+      // ── Grille 5 colonnes ──
+      heading('Structure CSS de la grille');
+
+      const gridStyle = win.getComputedStyle(grid);
+      assert('La grille a un max-width défini', parseInt(gridStyle.maxWidth) > 0);
+      assert('La grille est centrée (margin auto)', gridStyle.marginLeft === gridStyle.marginRight);
+
+      const gridCols = gridStyle.gridTemplateColumns.split(' ').length;
+      assert(`La grille a 5 colonnes (trouvé: ${gridCols})`, gridCols === 5);
+
+      // ── Résumé ──
+      showSummary();
+    }, 400);
+  }, 1000);
+  }, 350);
+});
+</script>
+</body>
+</html>
