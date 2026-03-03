@@ -288,7 +288,7 @@
     }
 
     .about-pill.visible .about-title {
-      max-height: 100px;
+      max-height: 200px;
       max-width: 100%;
       opacity: 1;
       padding: 0.6rem 0 0.3rem;
