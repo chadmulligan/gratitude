@@ -38,8 +38,9 @@
     const zoomChevron = document.getElementById('zoomChevron');
     const cards = [];
 
+    const mobileQuery = window.matchMedia('(max-width: 500px)');
     let currentOpen = null;
-    let zoomMode = false;
+    let zoomMode = mobileQuery.matches;
 
     function heartSVG(color) {
       return `<svg viewBox="0 0 100 95" class="heart-svg"><path d="${HEART_PATH}" fill="${color}"/></svg>`;
@@ -135,7 +136,13 @@
     });
 
     // Zoom slide button
-    const mobileQuery = window.matchMedia('(max-width: 500px)');
+    // Keep zoomMode in sync when resizing across the mobile breakpoint
+    mobileQuery.addEventListener('change', (e) => {
+      zoomMode = e.matches;
+      zoomSlide.classList.toggle('active', zoomMode);
+      closeCurrentCard();
+    });
+
     zoomSlide.addEventListener('click', (e) => {
       e.stopPropagation();
 

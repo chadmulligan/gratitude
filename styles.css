@@ -435,28 +435,14 @@
         gap: 0.8rem;
       }
 
-      /* Zoom button: simple pill below "Au hasard", no slide */
+      /* Zoom always on: hide the button */
       .zoom-slide {
-        position: static;
-        height: auto;
-        border-radius: 50px;
-        padding: 0.4rem 1.2rem;
-        transition: background 0.3s, border-color 0.3s;
-      }
-
-      .zoom-slide .zoom-label {
-        max-width: none;
-        opacity: 1;
-        padding: 0rem 0.3rem;
-      }
-
-      .zoom-slide .zoom-chevron {
         display: none;
       }
 
-      /* Smaller zoom scale for phone screens */
+      /* Zoom scale for phone screens */
       .heart-card.zoomed .heart-inner {
-        transform: perspective(800px) rotateY(180deg) scale(1.5);
+        transform: perspective(800px) rotateY(180deg) scale(1.8);
       }
 
       .heart-card.zoomed .heart-back-text.long-text {
