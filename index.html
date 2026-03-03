@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coeurs de la paroisse</title>
+  <title>MERCI</title>
   <style>
     * {
       margin: 0;
@@ -17,6 +17,7 @@
       min-height: 100vh;
       padding: 2rem 1rem 5rem;
       font-family: 'Georgia', 'Times New Roman', serif;
+      overflow-x: hidden;
     }
 
     .grid {
@@ -33,7 +34,6 @@
     .heart-card {
       width: 180px;
       height: 168px;
-      perspective: 800px;
       cursor: pointer;
     }
 
@@ -46,7 +46,7 @@
     }
 
     .heart-card.flipped .heart-inner {
-      transform: rotateY(180deg);
+      transform: perspective(800px) rotateY(180deg);
     }
 
     .heart-front,
@@ -61,6 +61,7 @@
 
     .heart-back {
       transform: rotateY(180deg);
+      /* No perspective needed here – it inherits the 3D context from .heart-inner */
     }
 
     /* --- Heart SVG --- */
@@ -97,12 +98,26 @@
       text-align: center;
       padding: 20px 22px 30px;
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 13px;
+      font-size: calc(var(--fs, 13) * 1px);
       line-height: 1.4;
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      color: #f9e1e1;
+      text-shadow: 0 1px 1px rgba(167, 115, 115, 0.25);
       overflow: hidden;
       word-break: break-word;
+    }
+
+    /* Gradient fade for truncated long text */
+    .heart-back-text.long-text {
+      -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 95%);
+      mask-image: linear-gradient(to bottom, black 55%, transparent 95%);
+    }
+
+    /* In zoom mode: smaller font to fit all text, remove fade */
+    .heart-card.zoomed .heart-back-text.long-text {
+      --fs: 6.5 !important;
+      line-height: 1.3;
+      -webkit-mask-image: none;
+      mask-image: none;
     }
 
     /* --- Zoom mode --- */
@@ -111,7 +126,13 @@
     }
 
     .heart-card.zoomed .heart-inner {
-      transform: rotateY(180deg) scale(2.5);
+      transform: perspective(800px) rotateY(180deg) scale(2.5);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .heart-card.zoomed .heart-back-text {
+      text-rendering: geometricPrecision;
     }
 
     /* --- Pulse animation for random --- */
@@ -134,7 +155,7 @@
     /* --- Button group --- */
     .btn-group {
       position: sticky;
-      bottom: 12rem;
+      bottom: 5rem;
       width: fit-content;
       margin: 1.5rem auto 0;
       z-index: 100;
@@ -148,7 +169,7 @@
       border-radius: 50px;
       padding: 1rem 2rem;
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 1.3rem;
+      font-size: 1.5rem;
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
@@ -165,25 +186,26 @@
     /* --- Zoom sliding pill (behind Au hasard, peeks right) --- */
     .zoom-slide {
       position: absolute;
+      height: 80%;
       top: 50%;
       transform: translateY(-50%);
       display: flex;
       align-items: center;
       background: #fff;
       border: 3px solid #d4556a;
-      border-radius: 50px;
+      border-radius: 20px;
       z-index: 1;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
       overflow: hidden;
       cursor: pointer;
       transition: left 0.35s ease, background 0.3s, border-color 0.3s;
-      /* Collapsed: mostly behind Au hasard */
-      left: calc(100% - 1.6rem);
+      /* Collapsed: hidden behind Au hasard, only chevron peeks out */
+      left: calc(100% - 90px);
     }
 
-    /* Slid out */
+    /* Slid out: entire pill visible */
     .zoom-slide.open {
-      left: calc(100% - 1rem);
+      left: calc(100% - 1.7rem);
     }
 
     /* Active (zoom on): fill entire pill */
@@ -201,12 +223,11 @@
     .zoom-label {
       color: #d4556a;
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 1.05rem;
+      font-size: 1.5rem;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
-      max-width: 0;
-      opacity: 0;
+      opacity: 1;
       padding: 0.8rem 0;
       transition: max-width 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
     }
@@ -214,7 +235,7 @@
     .zoom-slide.open .zoom-label {
       max-width: 120px;
       opacity: 1;
-      padding: 0.8rem 0.4rem 0.8rem 1.8rem;
+      padding: .8rem 0.15rem 0.7rem 1.8rem;
     }
 
     /* --- Chevron (always visible, changes direction) --- */
@@ -223,7 +244,7 @@
       font-size: 3.8rem;
       font-weight: 500;
       line-height: 1;
-      padding: 0rem 0rem 0.5rem 1.2rem;
+      padding: 0rem 0.1rem 0.5rem 1rem;
       transition: color 0.2s, padding 0.35s ease;
       flex-shrink: 0;
     }
@@ -232,11 +253,119 @@
       padding: 0rem 0.5rem 0.5rem 0rem;
     }
 
+    /* --- À Propos pill (fixed top-right, hangs from top edge) --- */
+    .about-pill {
+      position: fixed;
+      top: 0;
+      right: calc((100vw - 980px) / 2);
+      max-width: 980px;
+      z-index: 200;
+      background: #fff;
+      border: 3px solid #d4556a;
+      border-top: none;
+      border-radius: 0 0 25px 25px;
+      padding: 0 1.2rem 0.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      text-align: center;
+      width: auto;
+      /* CLOSING: pill padding shrinks with the size */
+      transition: padding 0.2s ease-in-out 0.15s;
+    }
+
+    .about-pill.visible {
+      padding: 0 1.2rem 0.8rem;
+      /* OPENING: pill padding grows with the size */
+      transition: padding 0.25s ease-in-out 0.05s;
+    }
+
+    .about-pill:hover {
+      background: #fef5f6;
+    }
+
+    .about-title {
+      max-height: 0;
+      max-width: 0;
+      overflow: hidden;
+      opacity: 0;
+      /* CLOSING: text hides [0-0.15s], then width+height shrink together [0.15-0.4s] */
+      transition: opacity 0s ease-in-out,
+                  max-height 0.5s ease-in-out 0.3s,
+                  max-width 0.5s ease-in-out 0.3s,
+                  padding 0.4s ease-in-out 0.4s;
+    }
+
+    .about-pill.visible .about-title {
+      max-height: 100px;
+      max-width: 100%;
+      opacity: 1;
+      padding: 0.6rem 0 0.3rem;
+      /* OPENING: width+height grow together [0.05-0.3s], then text fades in [0.3-0.5s] */
+      transition: max-width 0.25s ease-in-out 0.05s,
+                  max-height 0.25s ease-in-out 0.05s,
+                  opacity 0.15s ease-in-out 0.35s,
+                  padding 0.25s ease-in-out 0.05s;
+    }
+
+    .about-title h1 {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      display: flex;
+      align-items: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #d4556a;
+      line-height: 1.35;
+    }
+
+    .about-label {
+      display: block;
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #d4556a;
+      white-space: nowrap;
+      max-height: 2rem;
+      opacity: 1;
+      overflow: hidden;
+      /* SHOWING (closing pill): MERCI fades in at [0.4-0.5s] */
+      transition: max-height 0.1s ease-in-out 0.4s,
+                  opacity 0.1s ease-in-out 0.4s,
+                  margin 0.1s ease-in-out 0.4s;
+    }
+
+    .about-label.hidden {
+      max-height: 0;
+      opacity: 0;
+      margin: 0;
+      /* HIDING (opening pill): MERCI disappears instantly at [0-0.05s] */
+      transition: max-height 0.05s ease-in-out,
+                  opacity 0.05s ease-in-out,
+                  margin 0.05s ease-in-out;
+    }
+
     /* --- Responsive --- */
     @media (max-width: 980px) {
       .grid {
         grid-template-columns: repeat(4, 1fr);
         max-width: 760px;
+      }
+
+      .about-pill {
+        right: calc((100vw - 760px) / 2);
+        max-width: 760px;
+      }
+
+      body {
+        padding-bottom: 7rem;
+      }
+
+      .btn-group {
+        position: fixed;
+        bottom: 2.5rem;
+        left: 0;
+        right: 0;
+        width: fit-content;
+        margin: 0 auto;
       }
     }
 
@@ -268,12 +397,25 @@
       }
 
       .heart-back-text {
-        font-size: 12px;
+        font-size: calc(var(--fs, 13) * 0.85px);
         padding: 18px 20px 28px;
+      }
+
+      .heart-card.zoomed .heart-inner {
+        transform: perspective(800px) rotateY(180deg) scale(2);
+      }
+
+      .heart-card.zoomed .heart-back-text.long-text {
+        --fs: 5.5 !important;
       }
 
       body {
         padding: 1rem 0.5rem 5rem;
+      }
+
+      .about-pill {
+        right: calc((100vw - 560px) / 2);
+        max-width: 560px;
       }
     }
 
@@ -282,11 +424,64 @@
         grid-template-columns: repeat(2, 1fr);
         max-width: 340px;
       }
+
+      .about-pill {
+        right: calc((100vw - 340px) / 2);
+        max-width: 340px;
+      }
+
+      body {
+        padding-bottom: 9rem;
+      }
+
+      /* Fixed button group at bottom of viewport */
+      .btn-group {
+        bottom: 3.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8rem;
+      }
+
+      /* Zoom button: simple pill below "Au hasard", no slide */
+      .zoom-slide {
+        position: static;
+        height: auto;
+        border-radius: 50px;
+        padding: 0.4rem 1.2rem;
+        transition: background 0.3s, border-color 0.3s;
+      }
+
+      .zoom-slide .zoom-label {
+        max-width: none;
+        opacity: 1;
+        padding: 0rem 0.3rem;
+      }
+
+      .zoom-slide .zoom-chevron {
+        display: none;
+      }
+
+      /* Smaller zoom scale for phone screens */
+      .heart-card.zoomed .heart-inner {
+        transform: perspective(800px) rotateY(180deg) scale(1.5);
+      }
+
+      .heart-card.zoomed .heart-back-text.long-text {
+        --fs: 5 !important;
+      }
     }
   </style>
 </head>
 
 <body>
+
+  <div class="about-pill" id="aboutPill">
+    <div class="about-title">
+      <h1>Jubilé des 50 ans de la paroisse catholique de Berne et environs</h1>
+    </div>
+    <span class="about-label">MERCI</span>
+  </div>
 
   <div class="grid" id="grid"></div>
   <div class="btn-group" id="btnGroup">
@@ -350,6 +545,15 @@
       '#cc6677', '#e09099', '#c07080'
     ];
 
+    // À Propos toggle
+    const aboutPill = document.getElementById('aboutPill');
+    const aboutLabel = aboutPill.querySelector('.about-label');
+    aboutPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      aboutPill.classList.toggle('visible');
+      aboutLabel.classList.toggle('hidden');
+    });
+
     const grid = document.getElementById('grid');
     const randomBtn = document.getElementById('randomBtn');
     const zoomSlide = document.getElementById('zoomSlide');
@@ -361,6 +565,15 @@
 
     function heartSVG(color) {
       return `<svg viewBox="0 0 100 95" class="heart-svg"><path d="${HEART_PATH}" fill="${color}"/></svg>`;
+    }
+
+    // Adaptive font size based on text length
+    function getFontSize(len) {
+      if (len <= 50) return 13;
+      if (len <= 80) return 12;
+      if (len <= 110) return 10.5;
+      if (len <= 150) return 9;
+      return 8;
     }
 
     // Mélange aléatoire des messages à chaque chargement
@@ -379,6 +592,9 @@
       card.style.setProperty('--color', color);
       card.style.transform = `rotate(${rotation}deg) scale(${sizeVariation})`;
 
+      const fontSize = getFontSize(msg.length);
+      const longClass = msg.length > 120 ? ' long-text' : '';
+
       card.innerHTML = `
     <div class="heart-inner">
       <div class="heart-front">
@@ -387,7 +603,7 @@
       <div class="heart-back">
         <div class="heart-back-wrap">
           ${heartSVG(color)}
-          <div class="heart-back-text">${msg}</div>
+          <div class="heart-back-text${longClass}" style="--fs:${fontSize}">${msg}</div>
         </div>
       </div>
     </div>
@@ -433,8 +649,18 @@
     });
 
     // Zoom slide button
+    const mobileQuery = window.matchMedia('(max-width: 500px)');
     zoomSlide.addEventListener('click', (e) => {
       e.stopPropagation();
+
+      if (mobileQuery.matches) {
+        // Mobile: direct toggle, no slide step
+        zoomMode = !zoomMode;
+        zoomSlide.classList.toggle('active', zoomMode);
+        closeCurrentCard();
+        return;
+      }
+
       const isOpen = zoomSlide.classList.contains('open');
 
       if (!isOpen) {
@@ -445,6 +671,8 @@
         // Toggle zoom mode
         zoomMode = !zoomMode;
         zoomSlide.classList.toggle('active', zoomMode);
+        zoomSlide.classList.remove('open');
+        zoomChevron.innerHTML = '&rsaquo;';
         closeCurrentCard();
       }
     });
