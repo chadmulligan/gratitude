@@ -1,0 +1,53 @@
+#!/bin/sh
+# Pre-push hook: run tests before pushing.
+# Requires Chrome/Chromium and python3.
+
+set -e
+
+REPO_DIR="$(git rev-parse --show-toplevel)"
+PORT=9876
+
+# Find Chrome
+if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+elif command -v google-chrome >/dev/null 2>&1; then
+  CHROME="google-chrome"
+elif command -v chromium >/dev/null 2>&1; then
+  CHROME="chromium"
+else
+  echo "Chrome not found — cannot run tests. Push aborted."
+  exit 1
+fi
+
+# Start local server
+python3 -m http.server "$PORT" -d "$REPO_DIR" >/dev/null 2>&1 &
+SERVER_PID=$!
+
+cleanup() {
+  kill "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# Wait for server to be ready
+sleep 1
+
+# Run tests with headless Chrome (virtual-time-budget fast-forwards setTimeout)
+DOM=$("$CHROME" --headless=new --disable-gpu --no-sandbox \
+  --virtual-time-budget=15000 \
+  --dump-dom "http://localhost:$PORT/tests.html" 2>/dev/null) || true
+
+# Parse results from the summary div's class
+if echo "$DOM" | grep -q 'has-fail'; then
+  echo "Tests FAILED! Push aborted."
+  echo "Open tests.html in a browser to see details."
+  exit 1
+fi
+
+if echo "$DOM" | grep -q 'all-pass'; then
+  echo "All tests passed."
+  exit 0
+fi
+
+echo "Could not determine test results (browser may have timed out)."
+echo "Open tests.html in a browser to verify. Push aborted."
+exit 1
