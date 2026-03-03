@@ -335,6 +335,17 @@
                   margin 0.05s ease-in-out;
     }
 
+    /* --- Disclaimer footer --- */
+    .disclaimer {
+      text-align: center;
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.75rem;
+      color: #c4a0a0;
+      padding: 2rem 1rem 0.5rem;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
     /* --- Responsive --- */
     @media (max-width: 980px) {
       .grid {
