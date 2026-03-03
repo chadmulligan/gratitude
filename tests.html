@@ -51,6 +51,8 @@ function showSummary() {
   const total = passed + failed;
   summaryEl.textContent = `${passed}/${total} tests passed` + (failed > 0 ? ` — ${failed} failed` : '');
   summaryEl.className = failed > 0 ? 'has-fail' : 'all-pass';
+  // Signal completion for headless testing
+  document.title = failed > 0 ? 'FAIL' : 'PASS';
 }
 
 const iframe = document.getElementById('app');

@@ -2,10 +2,8 @@
 # Pre-push hook: run tests before pushing.
 # Requires Chrome/Chromium and python3.
 
-set -e
-
 REPO_DIR="$(git rev-parse --show-toplevel)"
-PORT=9876
+PORT=$((9800 + $$ % 100))
 
 # Find Chrome
 if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
@@ -28,18 +26,31 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Wait for server to be ready
+# Wait for server and warm up
 sleep 1
+curl -s "http://localhost:$PORT/messages.csv" >/dev/null 2>&1
 
-# Run tests with headless Chrome (virtual-time-budget fast-forwards setTimeout)
+# Run tests: use --dump-dom with virtual-time-budget.
+# Virtual time pauses during network requests, so fetch() should complete.
 DOM=$("$CHROME" --headless=new --disable-gpu --no-sandbox \
-  --virtual-time-budget=15000 \
+  --virtual-time-budget=30000 \
   --dump-dom "http://localhost:$PORT/tests.html" 2>/dev/null) || true
 
-# Parse results from the summary div's class
-if echo "$DOM" | grep -q 'has-fail'; then
+# Check document title set by showSummary()
+if echo "$DOM" | grep -q '<title>FAIL</title>'; then
   echo "Tests FAILED! Push aborted."
   echo "Open tests.html in a browser to see details."
+  exit 1
+fi
+
+if echo "$DOM" | grep -q '<title>PASS</title>'; then
+  echo "All tests passed."
+  exit 0
+fi
+
+# Fallback: check summary div class
+if echo "$DOM" | grep -q 'has-fail'; then
+  echo "Tests FAILED! Push aborted."
   exit 1
 fi
 
