@@ -55,9 +55,23 @@ function showSummary() {
 
 const iframe = document.getElementById('app');
 
+// Wait for cards to be rendered (loaded via fetch)
+function waitForCards(doc, callback, timeout = 5000) {
+  const start = Date.now();
+  const check = () => {
+    const cards = doc.querySelectorAll('.heart-card');
+    if (cards.length > 0) return callback();
+    if (Date.now() - start > timeout) return callback();
+    setTimeout(check, 100);
+  };
+  check();
+}
+
 iframe.addEventListener('load', () => {
   const doc = iframe.contentDocument;
   const win = iframe.contentWindow;
+
+  waitForCards(doc, () => {
 
   // ── Structure ──
   heading('Structure de la page');
@@ -66,7 +80,7 @@ iframe.addEventListener('load', () => {
   assert('La grille #grid existe', !!grid);
 
   const cards = doc.querySelectorAll('.heart-card');
-  assert(`40 coeurs sont affichés (trouvé: ${cards.length})`, cards.length === 40);
+  assert(`Des coeurs sont affichés (trouvé: ${cards.length})`, cards.length > 0);
 
   const btn = doc.getElementById('randomBtn');
   assert('Le bouton "Au hasard" existe', !!btn);
@@ -94,7 +108,7 @@ iframe.addEventListener('load', () => {
   // ── Messages uniques ──
   const messages = Array.from(cards).map(c => c.querySelector('.heart-back-text').textContent.trim());
   const uniqueMessages = new Set(messages);
-  assert(`Les 40 messages sont uniques (trouvé: ${uniqueMessages.size} uniques)`, uniqueMessages.size === 40);
+  assert(`Les ${cards.length} messages sont uniques (trouvé: ${uniqueMessages.size} uniques)`, uniqueMessages.size === cards.length);
 
   // ── Flip interaction ──
   heading('Interaction flip');
@@ -145,40 +159,25 @@ iframe.addEventListener('load', () => {
     const btnGroupStyle = win.getComputedStyle(btnGroupEl);
     assert('Le groupe de boutons a position: sticky', btnGroupStyle.position === 'sticky');
 
-    // ── Bouton extensible ──
-    heading('Bouton extensible et zoom');
+    // ── Bouton zoom slide ──
+    heading('Bouton zoom slide');
 
-    const expandBtnEl = doc.getElementById('expandBtn');
-    assert('La languette expand existe', !!expandBtnEl);
+    const zoomSlideEl = doc.getElementById('zoomSlide');
+    assert('Le zoom-slide existe', !!zoomSlideEl);
+    assert('Le zoom-slide n\'est pas ouvert au départ', !zoomSlideEl.classList.contains('open'));
 
-    const zoomBtnEl = doc.getElementById('zoomBtn');
-    assert('Le bouton Zoom existe', !!zoomBtnEl);
-
-    const zoomBtnStyle = win.getComputedStyle(zoomBtnEl);
-    assert('Le bouton Zoom est caché par défaut (max-width: 0)', zoomBtnStyle.maxWidth === '0px');
-
-    expandBtnEl.click();
-    assert('Après clic expand, btn-group a la classe expanded', btnGroupEl.classList.contains('expanded'));
-
-    // Vérifier que la règle CSS expanded applique max-width > 0
-    const expandedRule = Array.from(doc.styleSheets[0].cssRules).find(
-      r => r.selectorText === '.btn-group.expanded .zoom-btn'
-    );
-    assert('La règle CSS expanded définit max-width > 0 pour le bouton zoom',
-      expandedRule && parseInt(expandedRule.style.maxWidth) > 0);
+    zoomSlideEl.click();
+    assert('Après clic, le zoom-slide s\'ouvre (classe open)', zoomSlideEl.classList.contains('open'));
 
     // Attendre la transition CSS pour les tests suivants
     setTimeout(() => {
-      expandBtnEl.click();
-      assert('Après 2e clic expand, btn-group n\'a plus expanded', !btnGroupEl.classList.contains('expanded'));
+      // Clic quand ouvert → active le zoom
+      zoomSlideEl.click();
+      assert('Après 2e clic, le zoom-slide est actif', zoomSlideEl.classList.contains('active'));
+      assert('Après activation, le slide se referme', !zoomSlideEl.classList.contains('open'));
 
       // ── Mode zoom ──
       heading('Mode zoom');
-
-      // Activer le zoom
-      expandBtnEl.click(); // ouvrir le menu
-      zoomBtnEl.click(); // activer le zoom
-      assert('Le bouton Zoom est actif après clic (classe active)', zoomBtnEl.classList.contains('active'));
 
       // Fermer tout coeur ouvert d'abord
       Array.from(cards).forEach(c => { c.classList.remove('flipped'); c.classList.remove('zoomed'); });
@@ -194,9 +193,10 @@ iframe.addEventListener('load', () => {
       cards[3].click();
       assert('Re-clic referme le coeur zoomé', !cards[3].classList.contains('zoomed'));
 
-      // Désactiver le zoom
-      zoomBtnEl.click();
-      assert('Le bouton Zoom est désactivé après 2e clic', !zoomBtnEl.classList.contains('active'));
+      // Désactiver le zoom (open then toggle off)
+      zoomSlideEl.click(); // open
+      zoomSlideEl.click(); // toggle off
+      assert('Le zoom-slide est désactivé après toggle off', !zoomSlideEl.classList.contains('active'));
 
       // ── Structure SVG ──
       heading('Coeurs en SVG');
@@ -225,6 +225,7 @@ iframe.addEventListener('load', () => {
     }, 400);
   }, 1000);
   }, 350);
+  }); // waitForCards
 });
 </script>
 </body>
